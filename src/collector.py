@@ -90,20 +90,20 @@ class HistoricalDataCollector:
     
 
     
-def save_to_csv(self, df):
-    os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+    def save_to_csv(self, df):
+        os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
 
-    if os.path.exists(self.csv_path):
-        self.logger.info(f"Overwriting existing CSV at {self.csv_path}")
-    else:
-        self.logger.info(f"Creating new CSV at {self.csv_path}")
+        if os.path.exists(self.csv_path):
+            self.logger.info(f"Overwriting existing CSV at {self.csv_path}")
+        else:
+            self.logger.info(f"Creating new CSV at {self.csv_path}")
 
-    try:
-        with open(self.csv_path, mode='w', newline='', encoding='utf-8') as f:
-            df.to_csv(f, index=False)
-        self.logger.info("CSV saved successfully.")
-    except Exception as e:
-        self.logger.error(f"Failed to save CSV: {e}")
+        try:
+            with open(self.csv_path, mode='w', newline='', encoding='utf-8') as f:
+                df.to_csv(f, index=False)
+            self.logger.info("CSV saved successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to save CSV: {e}")
 
     def run(self):
         html = self.fetch_data()
