@@ -1,9 +1,10 @@
 import requests
 import sqlite3
 import pandas as pd
+import traceback
 from bs4 import BeautifulSoup
 from datetime import datetime
-from src.logger import setup_logger
+from src.logger import CustomLogger
 import os
 import numpy as np
 
@@ -12,19 +13,20 @@ class HistoricalDataCollector:
         self.url = "https://finance.yahoo.com/quote/NVDA/history/?period1=917015400&period2=1746572858"
         self.db_path = db_path
         self.csv_path = csv_path
-        self.logger = setup_logger("collector")
 
     def fetch_data(self):
-        self.logger.info("Fetching data from Yahoo Finance...")
+        logger = CustomLogger("HistoricalDataCollector", "fetch_data")
+        logger.info("Fetching data from Yahoo Finance...")
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(self.url, headers=headers)
         if response.status_code != 200:
-            self.logger.error("Failed to fetch data")
+            logger.error("Failed to fetch data" + traceback.format_exc())
             return None
         return response.text
 
     def parse_data(self, html):
-        self.logger.info("Parsing HTML content...")
+        logger = CustomLogger("HistoricalDataCollector", "parse_data")
+        logger.info("Parsing HTML content...")
         soup = BeautifulSoup(html, 'lxml')
         table = soup.find('table')
         rows = table.find_all('tr')
@@ -45,15 +47,15 @@ class HistoricalDataCollector:
                 }
                 data.append(parsed_row)
             except Exception as e:
-                self.logger.warning(f"Skipping row due to error: {e}")
+                logger.warning(f"Skipping row due to error: {e}")
         df = pd.DataFrame(data)
         return df
 
     def clean_data(self, df):
-        self.logger.info("Cleaning data...")
+        logger = CustomLogger("HistoricalDataCollector", "clean_data")
+        logger.info("Cleaning data...")
 
         try:
-            # Convertir columnas numéricas, remover comas y signos
             for col in ['Open', 'High', 'Low', 'Close']:
                 df[col] = df[col].str.replace(',', '').str.replace('$', '').astype(float)
 
@@ -61,51 +63,51 @@ class HistoricalDataCollector:
             df['Volume'] = df['Volume'].str.replace(',', '')
             df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
 
-            # Convertir la columna de fecha
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce', format='%b %d, %Y')
 
-            # Eliminar filas con valores faltantes
             initial_rows = len(df)
             df.dropna(inplace=True)
             final_rows = len(df)
-            self.logger.info(f"Dropped {initial_rows - final_rows} incomplete rows.")
+            logger.info(f"Dropped {initial_rows - final_rows} incomplete rows.")
 
             return df
         except Exception as e:
-            self.logger.error(f"Error while cleaning data: {e}")
+            logger.error(f"Error while cleaning data: {e}")
             return pd.DataFrame()
 
     def save_to_db(self, df):
-        self.logger.info("Saving data to SQLite database...")
+        logger = CustomLogger("HistoricalDataCollector", "save_to_db")
+        logger.info("Saving data to SQLite database...")
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         if os.path.exists(self.db_path):
-            self.logger.info(f"Overwriting existing database at {self.db_path}")
+            logger.info(f"Overwriting existing database at {self.db_path}")
         else:
-            self.logger.info(f"Creating new database at {self.db_path}")
+            logger.info(f"Creating new database at {self.db_path}")
 
         conn = sqlite3.connect(self.db_path)
         df.to_sql('historical_data', conn, if_exists='replace', index=False)
         conn.close()
-    
+        logger.info(f"Saved {len(df)} rows to database.")
 
-    
     def save_to_csv(self, df):
+        logger = CustomLogger("HistoricalDataCollector", "save_to_csv")
         os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
 
         if os.path.exists(self.csv_path):
-            self.logger.info(f"Overwriting existing CSV at {self.csv_path}")
+            os.remove(self.csv_path)
+            logger.info(f"Overwriting existing CSV at {self.csv_path}")
         else:
-            self.logger.info(f"Creating new CSV at {self.csv_path}")
+            logger.info(f"Creating new CSV at {self.csv_path}")
 
         try:
-            with open(self.csv_path, mode='w', newline='', encoding='utf-8') as f:
-                df.to_csv(f, index=False)
-            self.logger.info("CSV saved successfully.")
+            df.to_csv(self.csv_path, index=False, encoding='utf-8')
+            logger.info(f"CSV saved successfully with {len(df)} rows.")
         except Exception as e:
-            self.logger.error(f"Failed to save CSV: {e}")
+            logger.error(f"Failed to save CSV: {e}"+ traceback.format_exc())
 
     def run(self):
+        logger = CustomLogger("HistoricalDataCollector", "run")
         html = self.fetch_data()
         if html:
             df = self.parse_data(html)
@@ -115,8 +117,9 @@ class HistoricalDataCollector:
                     self.save_to_db(df)
                     self.save_to_csv(df)
                 else:
-                    self.logger.warning("Data cleaning resulted in an empty dataset.")
+                    logger.warning("Data cleaning resulted in an empty dataset.")
             else:
-                self.logger.warning("No data parsed from HTML.")
+                logger.warning("No data parsed from HTML.")
         else:
-            self.logger.error("HTML content was empty.")
+            logger.error("HTML content was empty.")
+

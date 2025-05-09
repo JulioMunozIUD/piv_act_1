@@ -1,22 +1,43 @@
+import datetime
 import logging
 import os
 
-def setup_logger(name: str):
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, f"{name}.log")
+class ContextLogger(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        return f"{msg}", {**kwargs, 'extra': self.extra}
 
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
 
-    fh = logging.FileHandler(log_path)
-    ch = logging.StreamHandler()
+class CustomLogger:
+    def __init__(self, class_name, function_name, logger_name='NvidiaCollector'):
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
 
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
+        log_file = f"logs/nvidia_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-    logger.addHandler(fh)
-    logger.addHandler(ch)
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False  # Evita imprimir en consola
 
-    return logger
+        if not logger.handlers:
+            file_handler = logging.FileHandler(log_file)
+            formatter = logging.Formatter(
+                '[%(asctime)s | %(name)s | %(class_name)s | %(function_name)s | %(levelname)s] %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+
+        # Este adaptador inyecta automáticamente class_name y function_name
+        self.logger = ContextLogger(logger, {
+            'class_name': class_name,
+            'function_name': function_name
+        })
+
+    def info(self, message):
+        self.logger.info(message)
+
+    def warning(self, message):
+        self.logger.warning(message)
+
+    def error(self, message):
+        self.logger.error(message)
