@@ -7,3 +7,5 @@ if __name__ == "__main__":
 
     collector = HistoricalDataCollector(db_path, csv_path)
     collector.run()
+
+   

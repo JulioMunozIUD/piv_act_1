@@ -87,16 +87,27 @@ class HistoricalDataCollector:
         conn = sqlite3.connect(self.db_path)
         df.to_sql('historical_data', conn, if_exists='replace', index=False)
         conn.close()
+    
 
     def save_to_csv(self, df):
-        os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+        abs_path = os.path.abspath(self.csv_path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
 
-        if os.path.exists(self.csv_path):
-            self.logger.info(f"Overwriting existing CSV at {self.csv_path}")
-        else:
-            self.logger.info(f"Creating new CSV at {self.csv_path}")
+        self.logger.info(f"Saving CSV to absolute path: {abs_path}")
 
-        df.to_csv(self.csv_path, index=False)
+        if os.path.exists(abs_path):
+            try:
+                os.remove(abs_path)
+                self.logger.info("Previous CSV deleted.")
+            except Exception as e:
+                self.logger.error(f"Failed to delete CSV: {e}")
+                return
+
+        try:
+            df.to_csv(abs_path, index=False)
+            self.logger.info("CSV saved successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to save CSV: {e}")
 
     def run(self):
         html = self.fetch_data()
