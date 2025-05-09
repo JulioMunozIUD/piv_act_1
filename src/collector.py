@@ -76,15 +76,26 @@ class HistoricalDataCollector:
             return pd.DataFrame()
 
     def save_to_db(self, df):
-        self.logger.info("Saving data to SQLite...")
+        self.logger.info("Saving data to SQLite database...")
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+
+        if os.path.exists(self.db_path):
+            self.logger.info(f"Overwriting existing database at {self.db_path}")
+        else:
+            self.logger.info(f"Creating new database at {self.db_path}")
+
         conn = sqlite3.connect(self.db_path)
         df.to_sql('historical_data', conn, if_exists='replace', index=False)
         conn.close()
 
     def save_to_csv(self, df):
-        self.logger.info("Saving data to CSV...")
         os.makedirs(os.path.dirname(self.csv_path), exist_ok=True)
+
+        if os.path.exists(self.csv_path):
+            self.logger.info(f"Overwriting existing CSV at {self.csv_path}")
+        else:
+            self.logger.info(f"Creating new CSV at {self.csv_path}")
+
         df.to_csv(self.csv_path, index=False)
 
     def run(self):
