@@ -16,7 +16,7 @@ class CustomLogger:
 
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
-        logger.propagate = False  # Evita imprimir en consola
+        logger.propagate = False  # evita imprimir en consola
 
         if not logger.handlers:
             file_handler = logging.FileHandler(log_file)
@@ -27,7 +27,6 @@ class CustomLogger:
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
 
-        # Este adaptador inyecta automáticamente class_name y function_name
         self.logger = ContextLogger(logger, {
             'class_name': class_name,
             'function_name': function_name
@@ -39,5 +38,6 @@ class CustomLogger:
     def warning(self, message):
         self.logger.warning(message)
 
-    def error(self, message):
-        self.logger.error(message)
+    def error(self, message, exc_info=False):
+        self.logger.error(message, exc_info=exc_info)
+
